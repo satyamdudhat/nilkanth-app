@@ -1,68 +1,76 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 // Local storage keys
 const INCOME_KEY = 'finance_income';
 const COGS_KEY = 'finance_cogs';
 const EXPENSES_KEY = 'finance_expenses';
 
-// Helper to get data from localStorage with a default empty array
-const getStoredData = (key) => {
-  const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : [];
+// Helper to get data from AsyncStorage with a default empty array
+const getStoredData = async (key) => {
+  try {
+    const data = await AsyncStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error(`Error getting stored data for ${key}:`, error);
+    return [];
+  }
+};
+
+// Helper to store data in AsyncStorage
+const setStoredData = async (key, data) => {
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.error(`Error storing data for ${key}:`, error);
+    throw error;
+  }
 };
 
 // Add income entry
-export const addIncome = (incomeData) => {
-  const currentData = getStoredData(INCOME_KEY);
+export const addIncome = async (incomeData) => {
+  const currentData = await getStoredData(INCOME_KEY);
   const newData = [...currentData, { ...incomeData, id: Date.now() }];
-  localStorage.setItem(INCOME_KEY, JSON.stringify(newData));
+  await setStoredData(INCOME_KEY, newData);
   return newData;
 };
 
 // Add COGS entry
-export const addCOGS = (cogsData) => {
-  const currentData = getStoredData(COGS_KEY);
+export const addCOGS = async (cogsData) => {
+  const currentData = await getStoredData(COGS_KEY);
   const newData = [...currentData, { ...cogsData, id: Date.now() }];
-  localStorage.setItem(COGS_KEY, JSON.stringify(newData));
+  await setStoredData(COGS_KEY, newData);
   return newData;
 };
 
 // Add expense entry
-export const addExpense = (expenseData) => {
-  const currentData = getStoredData(EXPENSES_KEY);
+export const addExpense = async (expenseData) => {
+  const currentData = await getStoredData(EXPENSES_KEY);
   const newData = [...currentData, { ...expenseData, id: Date.now() }];
-  localStorage.setItem(EXPENSES_KEY, JSON.stringify(newData));
+  await setStoredData(EXPENSES_KEY, newData);
   return newData;
 };
 
 // Get all income
-export const getAllIncome = () => {
-  return getStoredData(INCOME_KEY);
+export const getAllIncome = async () => {
+  return await getStoredData(INCOME_KEY);
 };
 
 // Get all COGS
-export const getAllCOGS = () => {
-  return getStoredData(COGS_KEY);
+export const getAllCOGS = async () => {
+  return await getStoredData(COGS_KEY);
 };
 
 // Get all expenses
-export const getAllExpenses = () => {
-  return getStoredData(EXPENSES_KEY);
+export const getAllExpenses = async () => {
+  return await getStoredData(EXPENSES_KEY);
 };
 
 // Calculate financial metrics
-export const calculateFinancialMetrics = (period = 'all') => {
-  const allIncome = getAllIncome();
-  const allCOGS = getAllCOGS();
-  const allExpenses = getAllExpenses();
-
-  // Filter data based on period
-  const filteredIncome = filterDataByPeriod(allIncome, period);
-  const filteredCOGS = filterDataByPeriod(allCOGS, period);
-  const filteredExpenses = filterDataByPeriod(allExpenses, period);
-
+export const calculateFinancialMetrics = (incomeData = [], cogsData = [], expenseData = []) => {
   // Calculate totals
-  const totalRevenue = filteredIncome.reduce((sum, item) => sum + parseFloat(item.amount), 0);
-  const totalCOGS = filteredCOGS.reduce((sum, item) => sum + parseFloat(item.amount), 0);
-  const totalExpenses = filteredExpenses.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+  const totalRevenue = incomeData.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+  const totalCOGS = cogsData.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+  const totalExpenses = expenseData.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
 
   // Calculate profit metrics
   const grossProfit = totalRevenue - totalCOGS;
@@ -104,10 +112,10 @@ const filterDataByPeriod = (data, period) => {
 };
 
 // Get data for charts
-export const getChartData = (period = 'all') => {
-  const allIncome = getAllIncome();
-  const allCOGS = getAllCOGS();
-  const allExpenses = getAllExpenses();
+export const getChartData = async (period = 'all') => {
+  const allIncome = await getAllIncome();
+  const allCOGS = await getAllCOGS();
+  const allExpenses = await getAllExpenses();
 
   // Filter data based on period
   const filteredIncome = filterDataByPeriod(allIncome, period);
@@ -146,4 +154,4 @@ const groupByDate = (data) => {
     acc[date] += parseFloat(item.amount);
     return acc;
   }, {});
-}; 
+};

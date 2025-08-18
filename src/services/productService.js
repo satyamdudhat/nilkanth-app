@@ -1,17 +1,35 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 // Constants for local storage keys
 const PRODUCTS_KEY = 'products';
 const PRODUCT_CATEGORIES_KEY = 'product_categories';
 
-// Helper function to get data from localStorage
-const getStoredData = (key) => {
-  const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : [];
+// Helper function to get data from AsyncStorage
+const getStoredData = async (key) => {
+  try {
+    const data = await AsyncStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error(`Error getting stored data for ${key}:`, error);
+    return [];
+  }
+};
+
+// Helper function to store data in AsyncStorage
+const setStoredData = async (key, data) => {
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.error(`Error storing data for ${key}:`, error);
+    throw error;
+  }
 };
 
 // Helper function to initialize demo data if none exists
-const initializeDemoData = () => {
+const initializeDemoData = async () => {
   // Check if products already exist
-  if (!localStorage.getItem(PRODUCTS_KEY)) {
+  const existingProducts = await getStoredData(PRODUCTS_KEY);
+  if (existingProducts.length === 0) {
     // Sample bakery products
     const demoProducts = [
       { 
@@ -106,11 +124,12 @@ const initializeDemoData = () => {
       }
     ];
     
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(demoProducts));
+    await setStoredData(PRODUCTS_KEY, demoProducts);
   }
   
   // Check if categories already exist
-  if (!localStorage.getItem(PRODUCT_CATEGORIES_KEY)) {
+  const existingCategories = await getStoredData(PRODUCT_CATEGORIES_KEY);
+  if (existingCategories.length === 0) {
     const demoCategories = [
       { id: 'cakes', name: 'Cakes', count: 3 },
       { id: 'cupcakes', name: 'Cupcakes', count: 1 },
@@ -120,7 +139,7 @@ const initializeDemoData = () => {
       { id: 'snacks', name: 'Snacks', count: 1 }
     ];
     
-    localStorage.setItem(PRODUCT_CATEGORIES_KEY, JSON.stringify(demoCategories));
+    await setStoredData(PRODUCT_CATEGORIES_KEY, demoCategories);
   }
 };
 
@@ -128,19 +147,19 @@ const initializeDemoData = () => {
 initializeDemoData();
 
 // Get all products
-export const getAllProducts = () => {
-  return getStoredData(PRODUCTS_KEY);
+export const getAllProducts = async () => {
+  return await getStoredData(PRODUCTS_KEY);
 };
 
 // Get product by ID
-export const getProductById = (productId) => {
-  const products = getStoredData(PRODUCTS_KEY);
+export const getProductById = async (productId) => {
+  const products = await getStoredData(PRODUCTS_KEY);
   return products.find(product => product.id === productId);
 };
 
 // Add a new product
-export const addProduct = (productData) => {
-  const products = getStoredData(PRODUCTS_KEY);
+export const addProduct = async (productData) => {
+  const products = await getStoredData(PRODUCTS_KEY);
   
   // Create new product
   const newProduct = {
@@ -153,17 +172,17 @@ export const addProduct = (productData) => {
   
   // Add to products array
   const updatedProducts = [...products, newProduct];
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updatedProducts));
+  await setStoredData(PRODUCTS_KEY, updatedProducts);
   
   // Update category count
-  updateCategoryCount(productData.category);
+  await updateCategoryCount(productData.category);
   
   return newProduct;
 };
 
 // Update a product
-export const updateProduct = (productId, productData) => {
-  const products = getStoredData(PRODUCTS_KEY);
+export const updateProduct = async (productId, productData) => {
+  const products = await getStoredData(PRODUCTS_KEY);
   
   // Find original product to check if category changed
   const originalProduct = products.find(product => product.id === productId);
@@ -180,44 +199,44 @@ export const updateProduct = (productId, productData) => {
     return product;
   });
   
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updatedProducts));
+  await setStoredData(PRODUCTS_KEY, updatedProducts);
   
   // If category changed, update category counts
   if (originalProduct && originalProduct.category !== productData.category) {
-    updateCategoryCount(originalProduct.category, -1);
-    updateCategoryCount(productData.category);
+    await updateCategoryCount(originalProduct.category, -1);
+    await updateCategoryCount(productData.category);
   }
   
   return updatedProducts.find(product => product.id === productId);
 };
 
 // Delete a product
-export const deleteProduct = (productId) => {
-  const products = getStoredData(PRODUCTS_KEY);
+export const deleteProduct = async (productId) => {
+  const products = await getStoredData(PRODUCTS_KEY);
   
   // Find product to get its category before deletion
   const productToDelete = products.find(product => product.id === productId);
   
   // Filter out the product
   const updatedProducts = products.filter(product => product.id !== productId);
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updatedProducts));
+  await setStoredData(PRODUCTS_KEY, updatedProducts);
   
   // Update category count
   if (productToDelete) {
-    updateCategoryCount(productToDelete.category, -1);
+    await updateCategoryCount(productToDelete.category, -1);
   }
   
   return updatedProducts;
 };
 
 // Get all product categories
-export const getProductCategories = () => {
-  return getStoredData(PRODUCT_CATEGORIES_KEY);
+export const getProductCategories = async () => {
+  return await getStoredData(PRODUCT_CATEGORIES_KEY);
 };
 
 // Add a new product category
-export const addProductCategory = (categoryData) => {
-  const categories = getStoredData(PRODUCT_CATEGORIES_KEY);
+export const addProductCategory = async (categoryData) => {
+  const categories = await getStoredData(PRODUCT_CATEGORIES_KEY);
   
   // Create new category
   const newCategory = {
@@ -228,14 +247,14 @@ export const addProductCategory = (categoryData) => {
   
   // Add to categories array
   const updatedCategories = [...categories, newCategory];
-  localStorage.setItem(PRODUCT_CATEGORIES_KEY, JSON.stringify(updatedCategories));
+  await setStoredData(PRODUCT_CATEGORIES_KEY, updatedCategories);
   
   return newCategory;
 };
 
 // Update category count
-const updateCategoryCount = (categoryId, change = 1) => {
-  const categories = getStoredData(PRODUCT_CATEGORIES_KEY);
+const updateCategoryCount = async (categoryId, change = 1) => {
+  const categories = await getStoredData(PRODUCT_CATEGORIES_KEY);
   
   // Update the category count
   const updatedCategories = categories.map(category => {
@@ -248,12 +267,12 @@ const updateCategoryCount = (categoryId, change = 1) => {
     return category;
   });
   
-  localStorage.setItem(PRODUCT_CATEGORIES_KEY, JSON.stringify(updatedCategories));
+  await setStoredData(PRODUCT_CATEGORIES_KEY, updatedCategories);
 };
 
 // Get top selling products
-export const getTopSellingProducts = (limit = 5) => {
-  const products = getStoredData(PRODUCTS_KEY);
+export const getTopSellingProducts = async (limit = 5) => {
+  const products = await getStoredData(PRODUCTS_KEY);
   
   // Sort by sales (highest first) and take the top N
   return [...products]
@@ -262,8 +281,8 @@ export const getTopSellingProducts = (limit = 5) => {
 };
 
 // Record a product sale
-export const recordProductSale = (productId, quantity = 1) => {
-  const products = getStoredData(PRODUCTS_KEY);
+export const recordProductSale = async (productId, quantity = 1) => {
+  const products = await getStoredData(PRODUCTS_KEY);
   
   // Update the product sales count
   const updatedProducts = products.map(product => {
@@ -276,23 +295,23 @@ export const recordProductSale = (productId, quantity = 1) => {
     return product;
   });
   
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updatedProducts));
+  await setStoredData(PRODUCTS_KEY, updatedProducts);
   return updatedProducts.find(product => product.id === productId);
 };
 
 // Get products by category
-export const getProductsByCategory = (categoryId) => {
-  const products = getStoredData(PRODUCTS_KEY);
+export const getProductsByCategory = async (categoryId) => {
+  const products = await getStoredData(PRODUCTS_KEY);
   return products.filter(product => product.category === categoryId);
 };
 
 // Search products
-export const searchProducts = (query) => {
-  const products = getStoredData(PRODUCTS_KEY);
+export const searchProducts = async (query) => {
+  const products = await getStoredData(PRODUCTS_KEY);
   const searchTerm = query.toLowerCase();
   
   return products.filter(product => 
     product.name.toLowerCase().includes(searchTerm) ||
     product.description.toLowerCase().includes(searchTerm)
   );
-}; 
+};
